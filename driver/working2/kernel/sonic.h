@@ -333,26 +333,6 @@ struct sonic_pcs {
     int beginning_idles;
     enum R_STATE r_state;
 
-#if SONIC_SYNCH
-    uint64_t synch_counter;
-
-    uint64_t *psynch_counter; 
-    uint64_t synch_rcounter;
-
-    uint32_t synch_rbytes;
-
-    uint32_t * psynch_offset;
-    uint32_t synch_roffset;
-    uint32_t synch_offset;
-    volatile uint32_t *synch_ptr;
-
-    spinlock_t synch_lock;
-    spinlock_t *psynch_lock;
-    uint64_t synch_debug;
-    uint64_t synch_debug2;
-    uint64_t synch_debug3;
-#endif /* SONIC_SYNCH */
-
     struct sonic_pcs_stat stat;
 };
 

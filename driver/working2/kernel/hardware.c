@@ -73,68 +73,6 @@ static inline void sonic_dma_reset(struct sonic_dma_header *header)
     wmb();
 }
 
-#if SONIC_SYNCH
-static inline void sonic_synch_counter(struct sonic_pcs *pcs, uint32_t my_ptr, uint32_t your_ptr, uint32_t offset, uint32_t bytes)
-{
-    // ASSUMPTION: No Missing DMAs
-    uint64_t your_counter, my_counter; 
-    uint64_t tmp, tmp2;
-    uint32_t tmp3, my_diff;
-    uint32_t your_diff;
-
-    // To warm up
-    if (pcs->stat.total_dma_cnt <= 15)
-        return;
-
-//    spin_lock_bh(pcs->psynch_lock);
-    your_counter = pcs->synch_rcounter;
-    tmp3=pcs->synch_roffset;
-    my_counter = pcs->synch_counter;
-
-    my_diff= my_ptr & (bytes -1);
-    your_diff= your_ptr < tmp3 ? ((pcs->ep_size + your_ptr )- tmp3) : your_ptr - tmp3;
-    // FIXME
-    your_diff &= pcs->ep_size -1;
-
-    tmp = pcs->synch_counter + bytes;
-    // FIXME: nasty...
-    if (your_diff + pcs->synch_rbytes < my_diff)
-        tmp2 = your_diff < my_diff ? ((pcs->synch_rbytes *2+ your_diff )- my_diff) : your_diff - my_diff;
-    else
-        tmp2 = your_diff < my_diff ? ((pcs->synch_rbytes + your_diff )- my_diff) : your_diff - my_diff;
-
-//    tmp2 &= 0xffc00;
-
-//    if (your_diff + pcs->synch_rbytes < my_diff)
- //       SONIC_DPRINT("[%s] %llu %llx ( %x %x %x %x ) %llx ( %x %x %x )  %llx %llx\n", pcs->name, pcs->stat.total_dma_cnt, pcs->synch_counter, my_ptr, my_diff, pcs->synch_offset, offset, pcs->synch_rcounter, your_ptr, your_diff, pcs->synch_roffset, tmp, your_counter);
-
-    your_counter += tmp2;
-
-
- //   SONIC_DPRINT("[%s] after %llx pcs->synch_rcounter %llx %llx\n", pcs->name, tmp, your_counter, tmp2);
-    if (tmp== your_counter)
-        pcs->synch_debug++;
-
-//    if (your_counter > tmp + 0x1000)
- //       pcs->synch_counter = tmp;
-  //  else
-        pcs->synch_counter = your_counter > tmp ? your_counter : tmp;
-
-    SONIC_DPRINT("[%s] %llu %llx ( %x %x %x %x ) %llx ( %x %x %x )  %llx %llx %llx\n", pcs->name, pcs->stat.total_dma_cnt, my_counter, my_ptr, my_diff, pcs->synch_offset, offset, pcs->synch_rcounter, your_ptr, your_diff, pcs->synch_roffset, tmp, your_counter, pcs->synch_counter - my_counter - bytes);
-
-    pcs->synch_offset = (my_ptr ) & ~(bytes -1);
-    if (pcs->synch_counter - my_counter != bytes) {
-        pcs->synch_debug3 += pcs->synch_counter - my_counter - bytes;
-        pcs->synch_debug2++;
-    }
-    
-
-    *pcs->psynch_counter = pcs->synch_counter;
-    *pcs->psynch_offset = pcs->synch_offset ;
-//    spin_unlock_bh(pcs->psynch_lock);
-}
-#endif /* SONIC_SYNCH */
-
 void sonic_dma_tx(struct sonic_pcs *pcs) 
 {
 	int i=0, num = pcs->dma_num_desc, retry_cnt = 0;
@@ -146,10 +84,6 @@ void sonic_dma_tx(struct sonic_pcs *pcs)
 	register uint32_t noffset = pcs->dma_cur_buf_idx * pcs->dma_buf_size;  // in bytes
 	register uint32_t next_addr = 0;
 	volatile const uint32_t * const ptr = pcs->ptr;
-#if SONIC_SYNCH
-    register uint32_t synch_counter=0;
-    volatile const uint32_t * const sptr = pcs->synch_ptr;
-#endif /* SONIC_SYNCH */
 
 	SONIC_DDPRINT("header = %p, offset = %x, nbytes = %d, bytes = %d num = %d,  noffset = %d\n", 
 		pcs->dma_header, offset, nbytes, bytes, num, noffset);
@@ -175,9 +109,6 @@ void sonic_dma_tx(struct sonic_pcs *pcs)
 #if SONIC_DMA_POINTER
 retry:
 	next_addr = le32_to_cpu(*ptr) << 3;
-#if SONIC_SYNCH
-    synch_counter=le32_to_cpu(*sptr) << 3;
-#endif /* SONIC_SYNCH */
 //	next_addr &= 0xfffff000;
 	retry_cnt++;
 
@@ -198,14 +129,6 @@ out:
 	SONIC_DDPRINT("[p%d] offset=%x, next_addr=%x \n", port_id, offset, next_addr);
 	SONIC_DDPRINT("[p%d] bytes = %x\n", port_id, bytes);
 #endif
-
-#if SONIC_SYNCH
-    sonic_synch_counter(pcs, next_addr, synch_counter, offset, bytes);
-//    rx_ptr = counter >> 29;
-//    tx_ptr = counter << 3;
-//    if (port_id == 0)
- //       SONIC_PRINT("[%d] %x %x %llx %x %x\n", port_id, rx_ptr, tx_ptr, counter, bytes, offset);
-#endif /* SONIC_SYNCH */
 
 	for ( i = 0 ; i < num ; i ++) {
 		sonic_dma_desc_set(&pcs->dt->desc[i] , 
@@ -242,10 +165,6 @@ void sonic_dma_rx(struct sonic_pcs *pcs)
 	register uint32_t next_addr = 0;
 	register uint32_t noffset = pcs->dma_cur_buf_idx * pcs->dma_buf_size;  // in bytes
 	volatile const uint32_t * const ptr = pcs->ptr;
-#if SONIC_SYNCH
-    register uint32_t synch_counter=0;
-    volatile const uint32_t * const sptr = pcs->synch_ptr;
-    #endif /* SONIC_SYNCH */
 
 	SONIC_DDPRINT("\n");
 
@@ -267,9 +186,6 @@ void sonic_dma_rx(struct sonic_pcs *pcs)
 
 #if SONIC_DMA_POINTER
 retry:
-#if SONIC_SYNCH
-    synch_counter=le32_to_cpu(*sptr) << 3;
-#endif /* SONIC_SYNCH */
 	next_addr = le32_to_cpu(*ptr) << 3;
 //	next_addr &= 0xfffff000;
 	retry_cnt ++;
@@ -288,13 +204,6 @@ retry:
 	SONIC_DDPRINT("[p%d] offset=%x, next_addr=%x \n", port_id, offset, next_addr);
 out:
 #endif
-
-#if SONIC_SYNCH
-    sonic_synch_counter(pcs, next_addr, synch_counter, offset, bytes);
-//    tx_ptr = counter >> 29;
- //   tx_ptr &= 0xfffff000;
-//    SONIC_PRINT("%x %x %llx\n", tx_ptr, next_addr, counter);
-#endif /* SONIC_SYNCH */
 
 	for ( i = 0 ; i < num ; i ++ ) {
 		sonic_dma_desc_set(&pcs->dt->desc[i] , 
@@ -511,49 +420,6 @@ abort:
     return -1;
 }
 
-#if SONIC_SYNCH
-void __sonic_synch_init(struct sonic_priv *sonic)
-{
-#ifndef SONIC_TWO_PORTS
-    sonic->ports[0]->tx_pcs->synch_ptr = &sonic->ports[0]->irq_data->rx_ptr;
-    sonic->ports[0]->rx_pcs->synch_ptr = &sonic->ports[0]->irq_data->rx_ptr;
-
-    sonic->ports[0]->tx_pcs->psynch_counter = &sonic->ports[0]->rx_pcs->synch_rcounter;
-    sonic->ports[0]->rx_pcs->psynch_counter = &sonic->ports[0]->tx_pcs->synch_rcounter;
-#else /* SONIC_TWO_PORTS */
-    sonic->ports[0]->tx_pcs->synch_ptr = &sonic->ports[1]->irq_data->rx_ptr;
-    sonic->ports[0]->rx_pcs->synch_ptr = &sonic->ports[1]->irq_data->tx_ptr;
-    
-    sonic->ports[0]->tx_pcs->psynch_counter = &sonic->ports[1]->rx_pcs->synch_rcounter;
-    sonic->ports[0]->rx_pcs->psynch_counter = &sonic->ports[1]->tx_pcs->synch_rcounter;
-
-    sonic->ports[0]->tx_pcs->psynch_offset = &sonic->ports[1]->rx_pcs->synch_roffset;
-    sonic->ports[0]->rx_pcs->psynch_offset = &sonic->ports[1]->tx_pcs->synch_roffset;
-
-    sonic->ports[0]->tx_pcs->synch_rbytes = sonic->ports[1]->rx_pcs->dma_buf_size;
-    sonic->ports[0]->rx_pcs->synch_rbytes = sonic->ports[1]->tx_pcs->dma_buf_size;
-
-    sonic->ports[0]->tx_pcs->psynch_lock = &sonic->ports[0]->tx_pcs->synch_lock;
-    sonic->ports[0]->rx_pcs->psynch_lock = &sonic->ports[1]->tx_pcs->synch_lock;
-
-    sonic->ports[1]->tx_pcs->synch_ptr = &sonic->ports[0]->irq_data->rx_ptr;
-    sonic->ports[1]->rx_pcs->synch_ptr = &sonic->ports[0]->irq_data->tx_ptr;
-
-    sonic->ports[1]->tx_pcs->psynch_counter = &sonic->ports[0]->rx_pcs->synch_rcounter;
-    sonic->ports[1]->rx_pcs->psynch_counter = &sonic->ports[0]->tx_pcs->synch_rcounter;
-
-    sonic->ports[1]->tx_pcs->synch_rbytes = sonic->ports[0]->rx_pcs->dma_buf_size;
-    sonic->ports[1]->rx_pcs->synch_rbytes = sonic->ports[0]->tx_pcs->dma_buf_size;
-
-    sonic->ports[1]->tx_pcs->psynch_offset = &sonic->ports[0]->rx_pcs->synch_roffset;
-    sonic->ports[1]->rx_pcs->psynch_offset = &sonic->ports[0]->tx_pcs->synch_roffset;
-
-    sonic->ports[1]->tx_pcs->psynch_lock = &sonic->ports[1]->tx_pcs->synch_lock;
-    sonic->ports[1]->rx_pcs->psynch_lock = &sonic->ports[0]->tx_pcs->synch_lock;
-#endif /* SONIC_TWO_PORTS */
-}
-#endif /* SONIC_SYNCH */
-
 int sonic_fpga_init(struct sonic_priv *sonic)
 {
     int i;
@@ -563,9 +429,6 @@ int sonic_fpga_init(struct sonic_priv *sonic)
             return -1;
         }
     }
-#if SONIC_SYNCH
-    __sonic_synch_init(sonic);
-#endif /* SONIC_SYNCH */
 
     return 0;
 }

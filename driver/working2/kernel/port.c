@@ -42,16 +42,6 @@ static inline void sonic_reset_pcs(struct sonic_pcs *pcs)
     pcs->dt->w3 = pcs->dma_num_desc - 1;
 #endif
 
-#if SONIC_SYNCH
-    pcs->synch_counter=0;
-    pcs->synch_rcounter=0;
-
-    pcs->synch_debug=0;
-    pcs->synch_debug2=0;
-    pcs->synch_debug3=0;
-    pcs->synch_offset=0;
-    pcs->synch_roffset=0;
-#endif
 }
 
 //FIXME: error handling
@@ -119,12 +109,6 @@ static struct sonic_pcs * sonic_alloc_pcs(struct sonic_port *port, int dma_buf_o
     pcs->dt->w3 = 0;
     pcs->dma_num_desc = dma_num_desc;
 #endif /* SONIC_SFP */
-
-#if SONIC_SYNCH
-    pcs->synch_counter=0;
-    pcs->synch_rcounter=0;
-    spin_lock_init(&pcs->synch_lock);
-#endif /* SONIC_SYNCH */
 
     if (dir == SONIC_DIR_TX) 
             pcs->dma_idx = 0;
