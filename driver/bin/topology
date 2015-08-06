@@ -1,0 +1,2 @@
+server -> Port 0 -> Port 1 -> Switch
+Port 1 is at the side and Port 0 is in the middle

@@ -1,0 +1,1 @@
+cmd_/home/haoxian/sonic/driver/kernel/sonic.ko := ld -r -m elf_x86_64 -T /usr/src/linux-headers-2.6.38-16-server/scripts/module-common.lds --build-id  -o /home/haoxian/sonic/driver/kernel/sonic.ko /home/haoxian/sonic/driver/kernel/sonic.o /home/haoxian/sonic/driver/kernel/sonic.mod.o
