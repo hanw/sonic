@@ -1,13 +1,13 @@
 #! /bin/bash
-SONIC_DIR=$HOME/sonic/driver
+SONIC_DIR=$HOME/afrl/sonic/driver
 date=`date +%Y-%m-%d-%H%M`
 
 pkt_len=1518
 pkt_cnt=100000
 idle=13738
-duration=5
-mac_wait=3
-mode=pcs_app_cross,pcs_app_cross
+duration=35
+mac_wait=31
+mode=pkt_gen,pkt_cap
 
 mac_src="00:60:dd:45:39:0d"
 mac_dst="00:60:dd:45:39:5a"
@@ -59,7 +59,7 @@ function post_process {
     #FIXME
 
 #    echo "Processing captured packets"
-    processed=`$HOME/sonic/driver/bin/sonic_parse.py -i ${result_path} -d -s $mac_src -t $mac_dst | grep "Processed" | awk '{print $2}'`
+    processed=`$HOME/afrl/sonic/driver/bin/sonic_parse.py -i ${result_path} -d -s $mac_src -t $mac_dst | grep "Processed" | awk '{print $2}'`
 }
 
 while getopts "l:c:i:d:w:m:p:r:g:v:e:-:" OPTION

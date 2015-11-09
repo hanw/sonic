@@ -108,7 +108,7 @@ def dump_decoded(fname, encoded, decoded):
 
 def isbiterror(ipg, interval, pid, msg_bits):
 	bit=(pid-1) % len(msg_bits)
-	tbit = 1 if ipg < interval else 0
+	tbit = 1 if ipg > interval else 0
 
 #	print pid, msg_bits[bit], tbit
 	return 1 if msg_bits[bit]!=tbit else 0
@@ -143,6 +143,7 @@ def separate_ipds(input, pkt_cnt, msg_bits, interval):
 		ipd=int(sep[6])
 
 		bit=msg_bits[(int(sep[0]) - 1) % len (msg_bits)]
+		#bit=msg_bits[(i-1) ]
 		encoded.append(bit)
 
 		if bit == 1 :
@@ -153,7 +154,7 @@ def separate_ipds(input, pkt_cnt, msg_bits, interval):
 			zeros.append(ipd)
 
 		# assume no packet loss
-		decoded.append(1 if ipg < interval else 0)
+		decoded.append(1 if ipg > interval else 0)
 		berrors=berrors+1 if isbiterror(ipg, interval, int(sep[0]), msg_bits) else berrors
 
 		if pkt_cnt>0 and i >=pkt_cnt :
@@ -229,7 +230,7 @@ def separate_ipds3(input, pkt_cnt, msg_bits, interval):
 	return one, zero
 
 def isbiterror2(ipg, interval, bit):
-	tbit = 0 if ipg < interval else 1
+	tbit = 1 if ipg > interval else 0
 
 #	print pid, msg_bits[bit], tbit
 	return 1 if bit!=tbit else 0
@@ -273,7 +274,7 @@ def separate_ipds2(input, pkt_cnt, interval):
 			zeros.append(ipd)
 
 		# assume no packet loss
-		decoded.append(1 if ipg < interval else 0)
+		decoded.append(1 if ipg > interval else 0)
 		berrors=berrors+1 if isbiterror2(ipg, interval, bit) else berrors
 
 		if pkt_cnt>0 and i >=pkt_cnt :

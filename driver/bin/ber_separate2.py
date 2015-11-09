@@ -5,8 +5,9 @@ import sonic
 def write_binary_file(fname, decoded):
     f = open (fname, "wb")
 
-    for x in decoded:
-        f.write(x)
+    b = bytearray(decoded);
+
+    f.write(b)
 
     f.close()
 
@@ -30,15 +31,15 @@ def main():
     if args.verbose:
         print args
 
-    covert_bits = read_binary_file(args.message)
+#    covert_bits = sonic.read_binary_file(args.message, args.pkt_cnt )
 
-    one, zero, decoded=sonic.separate_ipds(args.input, args.pkt_cnt, covert_bits, args.delta)
+    one, zero, decoded=sonic.separate_ipds2(args.input, args.pkt_cnt, args.delta)
 
     sonic.dump_dist_bits(args.input+".one.ipd", one)
     sonic.dump_dist_bits(args.input+ ".zero.ipd", zero)
 
     if args.output:
-        dump_covert_decoded(args.output, decoded)
+        write_binary_file(args.output, decoded)
     
 
 if __name__ == "__main__":

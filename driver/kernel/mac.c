@@ -111,9 +111,9 @@ inline int sonic_update_fifo_pkt_gen(struct sonic_packets *packets,
         case SONIC_PKT_GEN_COVERT:
             covert_bit = retrieve_bit(info->covert_msg, strlen(info->covert_msg), tid);
             if (covert_bit)
-                idle = ((info->idle - info->delta)< 12) ? 12 : (info->idle - info->delta);
-            else
                 idle = info->idle + info->delta;
+            else
+                idle = ((info->idle - info->delta)< 12) ? 12 : (info->idle - info->delta);
             break;
         }
 

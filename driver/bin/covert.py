@@ -80,7 +80,7 @@ def compute_gap(args, bits, idx):
 
     m = pow(2, len(bs)-1)
 
-    new_gap = int(args.gap - (m - .5) * args.epsilon + value * args.epsilon)
+    new_gap = int(args.gap - (m - .5) * args.epsilon  * 2+ value * args.epsilon * 2)
 #    if value < m:
 #        epsilon = (value - m) * args.epsilon
 #    else:
