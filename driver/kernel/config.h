@@ -90,7 +90,7 @@ struct sonic_config_runtime_args {
     SONIC_CONFIG_SYSTEM(rx_dma_num_desc, 1)             \
     SONIC_CONFIG_SYSTEM(fifo_exp, 4)                    \
     SONIC_CONFIG_SYSTEM(fifo_num_ent, 5)                \
-    SONIC_CONFIG_SYSTEM(ctrl_cpu, 6)
+    SONIC_CONFIG_SYSTEM(ctrl_cpu, 0)
 
 /* Do not modify these values if you do not know what you are doing */
 #define SONIC_CONFIG_SYSTEM_ARR_ARGS                   \
