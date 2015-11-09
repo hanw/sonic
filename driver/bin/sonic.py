@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
 import sys, os, getopt, numpy, math, argparse
+from scipy import stats
 
 bit_width= 1000000000 / 10312500000.0
 
@@ -66,6 +67,45 @@ def dump_dist_bits(fname, dist):
 
 	f.close()
 
+def dump_decoded(fname, encoded, decoded):
+	f = open(fname+".decoded", "w")
+	f2 = open(fname+".compare", "w")
+
+	f2.write('ID encoded decoded\n')
+	for i in range(len(decoded)):
+		f2.write('{}\t{}\t{}\t{}\n'.format(i, encoded[i],decoded[i], "Error" if encoded[i] != decoded[i] else ""))
+	f2.close()
+
+	j=0
+	tmp = 0
+	decodedBytes=[]
+	decodedAscii=[]
+	for i in range(len(decoded)):
+		tmp = tmp | (decoded[i] << j)
+		#print "{} {} {}".format(i, j, hex(tmp))
+		if j+1 == 8:
+			decodedBytes.append(tmp)
+			if tmp > 126 or tmp < 32:
+				decodedAscii.append(str(unichr(45)))
+			else: 
+				decodedAscii.append(str(unichr(tmp)))
+			#f.write("{}\n".format(tmp))
+			j = 0
+			tmp = 0
+		else: 
+			j += 1
+
+	for i in range(len(decodedBytes) / 16):
+		for j in range(16):
+			f.write("{}".format(decodedAscii[i*16 + j]))
+		f.write(" (")
+		for j in range(16):
+			f.write("{} ".format(format(decodedBytes[i*16 + j], 'x')))
+		f.write(")\n")
+	f.close()
+
+	return decodedBytes;
+
 def isbiterror(ipg, interval, pid, msg_bits):
 	bit=(pid-1) % len(msg_bits)
 	tbit = 1 if ipg < interval else 0
@@ -73,6 +113,181 @@ def isbiterror(ipg, interval, pid, msg_bits):
 #	print pid, msg_bits[bit], tbit
 	return 1 if msg_bits[bit]!=tbit else 0
 
+
+def separate_ipds(input, pkt_cnt, msg_bits, interval):
+	f=open(input+".info", 'r')
+
+	i=0
+
+	first=0
+	berrors=0
+	one={}
+	zero={}
+	ones=[]
+	zeros=[]
+	decoded=[]
+	encoded=[]
+
+	prev=0
+
+	for line in f:
+		if line[0]=='#': 
+			continue
+		if first==0: 
+			first=1
+			continue
+
+		sep=line.split()
+		i+=1
+		ipg=int(sep[3])
+		ipd=int(sep[6])
+
+		bit=msg_bits[(int(sep[0]) - 1) % len (msg_bits)]
+		encoded.append(bit)
+
+		if bit == 1 :
+			one[ipd] = one[ipd]+ 1 if ipd in one else 1
+			ones.append(ipd)
+		else:
+			zero[ipd] = zero[ipd] + 1 if ipd in zero else 1
+			zeros.append(ipd)
+
+		# assume no packet loss
+		decoded.append(1 if ipg < interval else 0)
+		berrors=berrors+1 if isbiterror(ipg, interval, int(sep[0]), msg_bits) else berrors
+
+		if pkt_cnt>0 and i >=pkt_cnt :
+			break;
+
+	f.close()
+
+	j=min(len(ones), len(zeros))
+	print "BER=", float(berrors) / i * 100.0, 
+
+	decoded_bytes = dump_decoded(input, encoded, decoded)
+#	print "corrcoef=", numpy.corrcoef(ones[:j], zeros[:j])
+#	print "chi-square=", stats.chisquare(numpy.array(sorted(ones[:j]), numpy.array(sorted(zeros[:j]))))
+
+	return one, zero, decoded_bytes
+
+def separate_ipds3(input, pkt_cnt, msg_bits, interval):
+	f=open(input+".info", 'r')
+
+	i=0
+
+	first=0
+	berrors=0
+	one={}
+	zero={}
+	ones=[]
+	zeros=[]
+
+	prev=-1
+	prev_ipd=-1
+
+	for line in f:
+		if line[0]=='#': 
+			continue
+		if first==0: 
+			first=1
+			continue
+
+		sep=line.split()
+		i+=1
+		ipg=int(sep[3])
+		ipd=int(sep[6])
+
+		bit=msg_bits[(int(sep[0]) - 1) % len (msg_bits)]
+
+		if bit == 1 :
+			one[ipd] = one[ipd]+ 1 if ipd in one else 1
+		else:
+			zero[ipd] = zero[ipd] + 1 if ipd in zero else 1
+
+		if prev == 0 and bit == 1:
+			ones.append(ipd)
+			zeros.append(prev_ipd)
+#		elif prev== 1 and bit == 0:
+#			zeros.append(ipd)
+
+		prev = bit
+		prev_ipd = ipd
+
+		# assume no packet loss
+		berrors=berrors+1 if isbiterror(ipg, interval, int(sep[0]), msg_bits) else berrors
+
+		if pkt_cnt>0 and i >=pkt_cnt :
+			break;
+
+	f.close()
+
+	j=min(len(ones), len(zeros))
+	print "BER=", float(berrors) / i 
+	print "corrcoef=", numpy.corrcoef(ones[:j], zeros[:j]), j, len(ones), len(zeros)
+#	print "chi-square=", stats.chisquare(numpy.array(sorted(ones[:j]), numpy.array(sorted(zeros[:j]))))
+
+	return one, zero
+
+def isbiterror2(ipg, interval, bit):
+	tbit = 0 if ipg < interval else 1
+
+#	print pid, msg_bits[bit], tbit
+	return 1 if bit!=tbit else 0
+
+
+def separate_ipds2(input, pkt_cnt, interval):
+	f=open(input+".info", 'r')
+
+	i=0
+
+	first=0
+	berrors=0
+	one={}
+	zero={}
+	ones=[]
+	zeros=[]
+	decoded=[]
+	encoded=[]
+
+	for line in f:
+		if line[0]=='#': 
+			continue
+		if first==0: 
+			first=1
+			continue
+
+		sep=line.split()
+		i+=1
+		ipg=int(sep[3])
+		ipd=int(sep[6])
+		idx=int(sep[0])
+
+		bit=(idx & 0xff000000) >> 24
+		encoded.append(bit)
+
+		if bit == 1 :
+			one[ipd] = one[ipd]+ 1 if ipd in one else 1
+			ones.append(ipd)
+		else:
+			zero[ipd] = zero[ipd] + 1 if ipd in zero else 1
+			zeros.append(ipd)
+
+		# assume no packet loss
+		decoded.append(1 if ipg < interval else 0)
+		berrors=berrors+1 if isbiterror2(ipg, interval, bit) else berrors
+
+		if pkt_cnt>0 and i >=pkt_cnt :
+			break;
+
+	f.close()
+
+	j=min(len(ones), len(zeros))
+	print "BER=", float(berrors) / i, 
+#	print "corrcoef=", numpy.corrcoef(ones[:j], zeros[:j])
+#	print "chi-square=", stats.chisquare(numpy.array(sorted(ones[:j]), numpy.array(sorted(zeros[:j]))))
+	decoded_bytes = dump_decoded(input, encoded, decoded)
+
+	return one, zero, decoded_bytes
 
 def compute_regularity_ber(input, window, pkt_cnt, msg_bits, interval, regularity, ber):
 #	print "Computing regularity with ", input, " window size ", window
@@ -444,4 +659,25 @@ def compute_waiting_idle_time(arrivals, departures):
 
 	return waitings, idles, services
 
+def read_binary_file(f, pkt_cnt):
+    bytes_read = open(f, 'rb').read(pkt_cnt / 8 +8)
+
+    bits=[]
+    i=0
+    while True:
+        for b in bytes_read:
+            for j in range(8):
+                bits.append((ord(b) >> j) & 0x1)
+                i += 1
+
+                if i == pkt_cnt:
+                    return bits
+
+def write_binary_file(fname, decoded):
+    f = open (fname, "wb")
+
+    for x in decoded:
+        f.write(x)
+
+    f.close()
 

@@ -94,7 +94,7 @@ def compute_gap(args, bits, idx):
 
 def generate_pkts(args):
     if args.stream is None:
-        pkts= [args.len for x in range(args.pkt_cnt)]
+        pkts= [args.len for x in range(args.pkt_cnt+1)]
         return pkts
 
     f=open(args.stream, 'r')
@@ -134,7 +134,7 @@ def generate_covert_packets(args):
         new_id = (i+1) | value << 24
 
         f.write('{} {} {} {}\n'.format(new_id, 2, pkts[i+1], gap))
-        dprint ('{} /{} {} {} {} ({}) {}'.format(hex(i+1), args.pkt_cnt, hex(value), hex(new_id), gap, epsilon, pkts[i+1]))
+        dprint ('{} /{} {} {} {} ({}) {}'.format(hex(i+1), args.pkt_cnt, hex(value), hex(new_id), gap, args.epsilon, pkts[i+1]))
     
     f.close()
     
