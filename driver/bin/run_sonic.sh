@@ -3,10 +3,10 @@ SONIC_DIR=$HOME/afrl/sonic/driver
 date=`date +%Y-%m-%d-%H%M`
 
 pkt_len=1518
-pkt_cnt=100000
+pkt_cnt=10000
 idle=13738
-duration=35
-mac_wait=31
+duration=5
+mac_wait=1
 mode=pkt_gen,pkt_cap
 
 mac_src="00:60:dd:45:39:0d"
