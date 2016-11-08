@@ -18,11 +18,11 @@ idle=13738
 pkt_len=1518
 
 SONIC_SERVER="sonic2.cs.cornell.edu"      # FIXME
-SONIC_PATH="sonic/git/driver"
+SONIC_PATH="sonic/driver"
 
 echo 
 echo "Demo 1: Profiling"
-ssh -i ~/.ssh/id_rsa2 $SONIC_SERVER "$SONIC_PATH/bin/run_sonic.sh -m pkt_gen,pkt_cap -d 35 -w 32 --mac_src $mac_src --ip_src $ip_src --port_src $port_src --mac_dst $mac_dst --ip_dst $ip_dst --port_dst $port_dst -c $pkt_cnt -l $pkt_len -i $idle -p $SONIC_PATH/result/${prefix}_profiling"
+ssh -i ~/.ssh/id_rsa2 $SONIC_SERVER "$SONIC_PATH/bin/run_sonic.sh -m pkt_gen,pkt_cap -d 5 -w 2 --mac_src $mac_src --ip_src $ip_src --port_src $port_src --mac_dst $mac_dst --ip_dst $ip_dst --port_dst $port_dst -c $pkt_cnt -l $pkt_len -i $idle -p $SONIC_PATH/result/${prefix}_profiling"
 scp -i ~/.ssh/id_rsa2 $SONIC_SERVER:$SONIC_PATH/result/${prefix}_profiling_${pkt_len}_${idle}.tmp.ipd result/.
 gnuplot -e "input_file=\"result/${prefix}_profiling_${pkt_len}_${idle}.tmp.ipd\"; output_file=\"result/${prefix}_profiling_${pkt_len}_${idle}_pdf.eps\";" profile.gnuplot
 open result/${prefix}_profiling_${pkt_len}_${idle}_pdf.eps
